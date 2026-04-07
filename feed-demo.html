@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>zettel — feed</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080808;
+  --bg2: #121212;
+  --bg3: #1a1a1a;
+  --bg4: #222222;
+  --border: #1e1e1e;
+  --border2: #2a2a2a;
+  --text: #f0f0f0;
+  --text2: #888888;
+  --text3: #404040;
+  --accent: #1DA1F2;
+  --accent-dim: rgba(29,161,242,0.12);
+  --accent-dim2: rgba(29,161,242,0.05);
+  --red: #f13565;
+  --green: #22c55e;
+  --radius: 10px;
+  --font-ui: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+}
+
+/* ── APP SHELL ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+  position: relative;
+  z-index: 10;
+}
+
+.app-name {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.05em;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-size: 1rem;
+}
+.icon-btn:hover, .icon-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+/* ── TABS ── */
+#tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  color: var(--text3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+  position: relative;
+}
+.tab.active { color: var(--text); }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: var(--accent);
+}
+
+/* ── MAIN CONTENT (scrollable) ── */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+#main::-webkit-scrollbar { width: 2px; }
+#main::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* ── FEED PANEL ── */
+.panel { display: none; padding: 16px; }
+.panel.active { display: block; }
+
+/* ── SECTION HEADER ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-count {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+}
+
+/* ── NOTE CARDS ── */
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeIn 0.2s ease both;
+}
+.note-card:hover, .note-card:active { border-color: var(--border2); background: var(--bg3); }
+
+.note-card.pinned::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 2px; height: 100%;
+  background: var(--accent);
+  border-radius: 10px 0 0 10px;
+}
+
+.note-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-body {
+  font-size: 0.78rem;
+  color: var(--text2);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.note-date {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text3);
+}
+
+.note-tags {
+  display: flex;
+  gap: 4px;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--accent);
+  background: var(--accent-dim2);
+  border: 1px solid rgba(29,161,242,0.15);
+  border-radius: 4px;
+  padding: 1px 6px;
+  letter-spacing: 0.02em;
+}
+
+.note-type {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text3);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* ── CALENDAR PANEL ── */
+#cal-panel {
+  padding: 16px;
+  display: none;
+}
+#cal-panel.active { display: block; }
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cal-month {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.cal-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.cal-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.cal-nav-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day-name {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text3);
+  text-align: center;
+  padding: 4px 0;
+  letter-spacing: 0.04em;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text2);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+}
+.cal-day:hover { background: var(--bg3); color: var(--text); }
+.cal-day.empty { cursor: default; }
+.cal-day.today {
+  color: var(--text);
+  font-weight: 500;
+}
+.cal-day.today::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%; transform: translateX(-50%);
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.cal-day.has-notes::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.6;
+}
+.cal-day.selected {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(29,161,242,0.25);
+}
+
+/* ── CALENDAR NOTES ── */
+.cal-notes-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 10px;
+}
+
+.cal-selected-date {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.cal-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cal-note-item {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.cal-note-item:hover { border-color: var(--border2); }
+
+.cal-note-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-note-preview {
+  font-size: 0.72rem;
+  color: var(--text2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cal-empty {
+  text-align: center;
+  padding: 24px 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text3);
+}
+
+/* ── NEW NOTE BUTTON ── */
+#fab {
+  position: absolute;
+  bottom: 20px;
+  right: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(29,161,242,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 20;
+}
+#fab:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(29,161,242,0.45); }
+#fab:active { transform: scale(0.97); }
+
+/* ── NEW NOTE DRAWER ── */
+#note-drawer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border2);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 18px;
+  z-index: 30;
+  transform: translateY(100%);
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+#note-drawer.open { transform: translateY(0); }
+
+.drawer-handle {
+  width: 36px;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.drawer-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.drawer-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  outline: none;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.drawer-input:focus { border-color: rgba(29,161,242,0.4); }
+.drawer-input::placeholder { color: var(--text3); }
+
+.drawer-textarea {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  outline: none;
+  resize: none;
+  height: 100px;
+  transition: border-color 0.15s;
+  line-height: 1.55;
+}
+.drawer-textarea:focus { border-color: rgba(29,161,242,0.4); }
+.drawer-textarea::placeholder { color: var(--text3); }
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.drawer-btn {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.03em;
+}
+.drawer-btn:hover { background: var(--bg4); }
+.drawer-btn.primary {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(29,161,242,0.3);
+}
+.drawer-btn.primary:hover { background: rgba(29,161,242,0.2); }
+
+/* ── OVERLAY ── */
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+#overlay.show { opacity: 1; pointer-events: all; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* stagger */
+.note-card:nth-child(1) { animation-delay: 0.03s; }
+.note-card:nth-child(2) { animation-delay: 0.07s; }
+.note-card:nth-child(3) { animation-delay: 0.11s; }
+.note-card:nth-child(4) { animation-delay: 0.15s; }
+.note-card:nth-child(5) { animation-delay: 0.19s; }
+.note-card:nth-child(6) { animation-delay: 0.23s; }
+
+/* ── SEARCH BAR ── */
+.search-wrap {
+  padding: 10px 16px 6px;
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-input:focus { border-color: var(--border2); }
+.search-input::placeholder { color: var(--text3); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+.empty-icon { font-size: 2rem; margin-bottom: 12px; opacity: 0.3; }
+.empty-text { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text3); line-height: 1.7; }
+
+/* ── TOAST ── */
+#toast {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <span class="app-name">zettel</span>
+    <div class="topbar-actions">
+      <button class="icon-btn" title="Buscar" onclick="toggleSearch()">⌕</button>
+      <button class="icon-btn" title="Filtrar">⊟</button>
+    </div>
+  </div>
+
+  <!-- SEARCH (hidden by default) -->
+  <div class="search-wrap" id="search-wrap" style="display:none;">
+    <input class="search-input" id="search-input" placeholder="buscar notas..." oninput="filterNotes(this.value)">
+  </div>
+
+  <!-- TABS -->
+  <div id="tabs">
+    <button class="tab active" onclick="switchTab('feed', this)">feed</button>
+    <button class="tab" onclick="switchTab('calendar', this)">calendar</button>
+  </div>
+
+  <!-- MAIN SCROLL AREA -->
+  <div id="main">
+
+    <!-- FEED PANEL -->
+    <div class="panel active" id="feed-panel">
+      <div class="section-header">
+        <span class="section-title">recientes</span>
+        <span class="section-count" id="notes-count">0 notas</span>
+      </div>
+      <div class="notes-list" id="notes-list"></div>
+    </div>
+
+    <!-- CALENDAR PANEL -->
+    <div id="cal-panel">
+      <div class="cal-header">
+        <span class="cal-month" id="cal-month-label">abril 2026</span>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+          <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+
+      <div class="cal-grid" id="cal-grid"></div>
+
+      <div class="cal-notes-header" id="cal-notes-header" style="display:none;">
+        <span class="section-title">notas del</span>
+        <span class="cal-selected-date" id="cal-selected-date-label"></span>
+      </div>
+      <div class="cal-notes-list" id="cal-notes-list"></div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- FAB -->
+  <button id="fab" onclick="openDrawer()">+</button>
+
+  <!-- OVERLAY -->
+  <div id="overlay" onclick="closeDrawer()"></div>
+
+  <!-- NOTE DRAWER -->
+  <div id="note-drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">nueva nota</div>
+    <input class="drawer-input" id="drawer-title" placeholder="Título…" maxlength="80">
+    <textarea class="drawer-textarea" id="drawer-body" placeholder="Escribe aquí…"></textarea>
+    <div class="drawer-footer">
+      <button class="drawer-btn" onclick="closeDrawer()">cancelar</button>
+      <button class="drawer-btn primary" onclick="saveNote()">guardar</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast">nota guardada ✓</div>
+
+</div><!-- /app -->
+
+<script>
+// ── DATA STORE ──
+const STORAGE_KEY = 'zettel_notes_demo';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function save(notes) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+}
+
+let notes = load();
+
+// If empty, seed with sample notes
+if (notes.length === 0) {
+  const now = Date.now();
+  notes = [
+    {
+      id: '1', title: 'Aprender Rust en 30 días',
+      body: 'Empezar con el ownership model. Leer el libro oficial los primeros 10 días, luego hacer proyectos pequeños para practicar borrowing y lifetimes.',
+      tags: ['dev', 'rust'],
+      type: 'permanente',
+      date: now - 1000*60*60*2,
+      pinned: true
+    },
+    {
+      id: '2', title: 'Ideas para DeckMind v2',
+      body: 'Añadir modo revisión espaciada tipo Anki. También sincronización entre dispositivos y soporte para imágenes en las tarjetas.',
+      tags: ['proyecto'],
+      type: 'idea',
+      date: now - 1000*60*60*24,
+      pinned: false
+    },
+    {
+      id: '3', title: 'Recursos de Python — semana 3',
+      body: 'Operadores: comparación, lógicos, aritméticos, de identidad. Completar los ejercicios del día 3 del repositorio 30-Days-Of-Python.',
+      tags: ['python', 'aprendizaje'],
+      type: 'referencia',
+      date: now - 1000*60*60*48,
+      pinned: false
+    },
+    {
+      id: '4', title: 'Nota sobre zettlekasten',
+      body: 'El método Zettelkasten conecta ideas mediante vínculos. Cada nota debe ser atómica: una sola idea desarrollada completamente.',
+      tags: [],
+      type: 'permanente',
+      date: now - 1000*60*60*72,
+      pinned: false
+    },
+    {
+      id: '5', title: 'Reflexión del lunes',
+      body: 'Concentrarse en el proceso, no en el resultado. El progreso compuesto funciona si mantienes consistencia aunque los pasos sean pequeños.',
+      tags: ['diario'],
+      type: 'efímera',
+      date: now - 1000*60*60*96,
+      pinned: false
+    },
+    {
+      id: '6', title: 'Funciones anónimas en Python',
+      body: 'lambda x: x*2 — útiles para funciones pequeñas. No abusar, prefiero funciones named para legibilidad en producción.',
+      tags: ['python'],
+      type: 'referencia',
+      date: now - 1000*60*60*120,
+      pinned: false
+    }
+  ];
+  save(notes);
+}
+
+// ── RENDER FEED ──
+function formatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = Date.now() - ts;
+  if (diff < 60*60*1000) return 'hace ' + Math.floor(diff/60000) + ' min';
+  if (diff < 24*60*60*1000) return 'hace ' + Math.floor(diff/3600000) + ' h';
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function renderFeed(query = '') {
+  const list = document.getElementById('notes-list');
+  const countEl = document.getElementById('notes-count');
+
+  let filtered = notes.sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return b.date - a.date;
+  });
+
+  if (query) {
+    const q = query.toLowerCase();
+    filtered = filtered.filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.body.toLowerCase().includes(q) ||
+      n.tags.some(t => t.includes(q))
+    );
+  }
+
+  countEl.textContent = filtered.length + ' nota' + (filtered.length !== 1 ? 's' : '');
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◻</div>
+      <div class="empty-text">${query ? 'sin resultados para "' + query + '"' : 'sin notas todavía\npulsa + para crear una'}</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(n => `
+    <div class="note-card ${n.pinned ? 'pinned' : ''}">
+      <div class="note-title">${escHtml(n.title)}</div>
+      ${n.body ? `<div class="note-body">${escHtml(n.body)}</div>` : ''}
+      <div class="note-footer">
+        <span class="note-date">${formatDate(n.date)}</span>
+        <div class="note-tags">
+          ${n.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+          <span class="note-type">${escHtml(n.type)}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── TABS ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('feed-panel').classList.remove('active');
+  document.getElementById('cal-panel').classList.remove('active');
+  document.getElementById('fab').style.display = name === 'feed' ? 'flex' : 'none';
+
+  if (name === 'feed') {
+    document.getElementById('feed-panel').classList.add('active');
+  } else {
+    document.getElementById('cal-panel').classList.add('active');
+    renderCalendar();
+  }
+}
+
+// ── SEARCH ──
+function toggleSearch() {
+  const wrap = document.getElementById('search-wrap');
+  const inp = document.getElementById('search-input');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    inp.focus();
+  } else {
+    wrap.style.display = 'none';
+    inp.value = '';
+    renderFeed('');
+  }
+}
+
+function filterNotes(q) {
+  renderFeed(q);
+}
+
+// ── NEW NOTE ──
+function openDrawer() {
+  document.getElementById('note-drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('drawer-title').focus();
+}
+
+function closeDrawer() {
+  document.getElementById('note-drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('drawer-title').value = '';
+  document.getElementById('drawer-body').value = '';
+}
+
+function saveNote() {
+  const title = document.getElementById('drawer-title').value.trim();
+  const body = document.getElementById('drawer-body').value.trim();
+  if (!title && !body) { closeDrawer(); return; }
+
+  const note = {
+    id: Date.now().toString(),
+    title: title || 'Sin título',
+    body,
+    tags: [],
+    type: 'efímera',
+    date: Date.now(),
+    pinned: false
+  };
+
+  notes.unshift(note);
+  save(notes);
+  closeDrawer();
+  renderFeed();
+  showToast('nota guardada ✓');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── CALENDAR ──
+let calYear = 2026, calMonth = 3; // April 2026 (0-indexed)
+let selectedDay = null;
+
+const MONTH_NAMES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DAY_NAMES   = ['lu','ma','mi','ju','vi','sá','do'];
+
+function notesForDay(y, m, d) {
+  return notes.filter(n => {
+    const nd = new Date(n.date);
+    return nd.getFullYear() === y && nd.getMonth() === m && nd.getDate() === d;
+  });
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // Day headers
+  DAY_NAMES.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const startOffset = (firstDay === 0) ? 6 : firstDay - 1; // make Monday=0
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < startOffset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = d;
+
+    const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d;
+    if (isToday) el.classList.add('today');
+
+    const dayNotes = notesForDay(calYear, calMonth, d);
+    if (dayNotes.length > 0) el.classList.add('has-notes');
+
+    if (selectedDay === d) el.classList.add('selected');
+
+    el.addEventListener('click', () => selectDay(d));
+    grid.appendChild(el);
+  }
+
+  if (selectedDay) renderCalNotes(selectedDay);
+}
+
+function selectDay(d) {
+  selectedDay = d;
+  renderCalendar();
+}
+
+function renderCalNotes(d) {
+  const header = document.getElementById('cal-notes-header');
+  const label = document.getElementById('cal-selected-date-label');
+  const list = document.getElementById('cal-notes-list');
+
+  const dayNotes = notesForDay(calYear, calMonth, d);
+  const dateStr = d + ' de ' + MONTH_NAMES[calMonth];
+
+  label.textContent = dateStr;
+  header.style.display = 'flex';
+
+  if (dayNotes.length === 0) {
+    list.innerHTML = `<div class="cal-empty">sin notas este día</div>`;
+    return;
+  }
+
+  list.innerHTML = dayNotes.map(n => `
+    <div class="cal-note-item">
+      <div class="cal-note-title">${escHtml(n.title)}</div>
+      ${n.body ? `<div class="cal-note-preview">${escHtml(n.body)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  selectedDay = null;
+  document.getElementById('cal-notes-header').style.display = 'none';
+  document.getElementById('cal-notes-list').innerHTML = '';
+  renderCalendar();
+}
+
+// ── INIT ──
+renderFeed();
+</script>
+</body>
+</html>
